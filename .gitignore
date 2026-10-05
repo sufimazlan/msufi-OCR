@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Local runtime output (never commit)
+data/
+output/
+*.sqlite
+*.log
+
+# Safety net: real documents must never enter the repo.
+# Only synthetic samples under samples/synthetic/ are allowed.
+*.pdf
+*.PDF
+*.png
+*.jpg
+*.jpeg
+*.tif
+*.tiff
+*.xlsx
+!samples/synthetic/*.pdf
+
+# Local config overrides
+.env
+config/thresholds.local.json
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

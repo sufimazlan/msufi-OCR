@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ocrmod"
+version = "0.1.0"
+description = "Local OCR document module for AP: ingest scanned PDFs, extract fields, flag for review, export."
+requires-python = ">=3.10"
+dependencies = [
+    "pymupdf>=1.24",
+    "opencv-python-headless>=4.9",
+    "numpy>=1.26",
+    "pydantic>=2.6",
+    "rapidfuzz>=3.6",
+    "openpyxl>=3.1",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+# GPU OCR engines. Install on the RTX 4060 PC only; see README for the paddlepaddle-gpu wheel.
+paddle = ["paddleocr[doc-parser]>=3.3"]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+ocrmod = "ocrmod.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

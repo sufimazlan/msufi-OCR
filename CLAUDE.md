@@ -29,7 +29,11 @@ architecture choices briefly.
 - Ollama 0.40.3 on Windows. Qwen3.5-4B Q4_K_M was imported from LM Studio's GGUF as the
   Ollama model `qwen3.5-4b` (about 3.0GB VRAM at 4096 context, 100% GPU).
 - Docker is NOT installed. The PaddleOCR engines run in a Python venv inside WSL2
-  (see docs/setup-gpu.md).
+  (`~/venvs/ocrmod`, Python 3.12, paddlepaddle-gpu 3.3.1 cu126; see docs/setup-gpu.md).
+  Ubuntu reaches Windows Ollama at localhost via WSL mirrored networking.
+- paddleocr now defaults to PP-OCRv6 (medium det/rec) for the line engine, not PP-OCRv5.
+  PaddleOCR-VL-1.6 with PP-DocLayoutV3 downloads and loads. With desktop apps open,
+  PaddleOCR-VL pushed VRAM to 7.9/8.2GB and ran very slowly: close GPU apps before runs.
 - Repo clone on the PC: `C:\Users\sufim\Dev\msufi-OCR` (in WSL:
   `/mnt/c/Users/sufim/Dev/msufi-OCR`). Git commands are run from Windows PowerShell.
 - Work laptop (Intel iGPU, 8GB RAM): code review and CPU-only tests only. No models.

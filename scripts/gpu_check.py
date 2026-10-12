@@ -3,6 +3,10 @@
 Run inside the WSL2 venv (docs/setup-gpu.md):
     python scripts/gpu_check.py
     python scripts/gpu_check.py --skip paddle_vl     # skip a slow step
+    python scripts/gpu_check.py --only paddle_vl     # run just one step
+
+Each step prints a ">>> PASS/FAIL" line as it finishes. Ctrl+C stops the current step
+and still prints the summary.
 
 Uses only the synthetic sample invoice, never real documents.
 """
@@ -78,9 +82,14 @@ def step(name: str, skip: set[str]):
                 with PeakVRAM() as vram:
                     detail = fn(*a) or ""
                 RESULTS.append((name, "PASS", f"{detail}  [{time.time() - t0:.1f}s, {vram.report()}]"))
+            except KeyboardInterrupt:
+                RESULTS.append((name, "STOP", f"stopped with Ctrl+C after {time.time() - t0:.0f}s"))
+                print(f">>> STOP {name}")
+                raise
             except Exception as exc:
                 traceback.print_exc()
                 RESULTS.append((name, "FAIL", f"{type(exc).__name__}: {exc}"[:300]))
+            print(f">>> {RESULTS[-1][1]} {name}: {RESULTS[-1][2]}")
         return run
     return deco
 
@@ -89,8 +98,10 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip", nargs="*", default=[],
                     help="nvidia paddle ollama orientation ppocr paddle_vl glm_ocr")
+    ap.add_argument("--only", nargs="*", help="run only these steps")
     args = ap.parse_args()
-    skip = set(args.skip)
+    steps = ["nvidia", "paddle", "ollama", "orientation", "ppocr", "paddle_vl", "glm_ocr"]
+    skip = set(args.skip) | ({s for s in steps if s not in args.only} if args.only else set())
     settings = Settings.load()
     tmp = Path(tempfile.mkdtemp(prefix="ocrmod-gpucheck-"))
 
@@ -187,14 +198,17 @@ def main() -> None:
         assert EXPECT in md, f"invoice number not in output; see {tmp / 'glm_ocr.md'}"
         return f"{len(md)} chars"
 
-    for fn in (nvidia, paddle_gpu, ollama, orientation, ppocr, paddle_vl, glm_ocr):
-        fn()
+    try:
+        for fn in (nvidia, paddle_gpu, ollama, orientation, ppocr, paddle_vl, glm_ocr):
+            fn()
+    except KeyboardInterrupt:
+        pass
 
     print("\n" + "=" * 70)
     for name, status, detail in RESULTS:
         print(f"{status:5} {name:12} {detail}")
     print(f"\nScratch files: {tmp}  (delete when done)")
-    if not any(s == "FAIL" for _, s, _ in RESULTS):
+    if all(s in ("PASS", "SKIP") for _, s, _ in RESULTS):
         shutil.rmtree(tmp, ignore_errors=True)
         print("All good; scratch files removed.")
 

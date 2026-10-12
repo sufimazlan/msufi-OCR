@@ -70,12 +70,16 @@ cd /mnt/c/Users/sufim/Dev/msufi-OCR
 
 Versions move quickly. Check the current command on the official install page first:
 https://www.paddlepaddle.org.cn/en/install/quick (choose: Linux, pip, GPU, CUDA 12.6).
-Your driver (CUDA 12.7) can run CUDA 12.6 builds. At the time of writing:
+Your driver (CUDA 12.7) can run CUDA 12.6 builds. Installed on the GPU PC (2026-10-13):
 
 ```bash
-python -m pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
+python -m pip install paddlepaddle-gpu==3.3.1 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
 python -m pip install -U "paddleocr[doc-parser]"
+python -c "import paddle; paddle.utils.run_check()"   # expect: works well on 1 GPU
 ```
+
+This pulls in NVIDIA's CUDA libraries as pip packages, so the venv grows to several GB.
+Afterwards `pip cache purge` frees the download cache.
 
 If `import cv2` breaks afterwards (two OpenCV builds installed), fix it with:
 
@@ -86,11 +90,18 @@ pip install opencv-contrib-python
 
 ## 4. Check every model
 
-Close heavy GPU apps first (games, Overwolf, extra browsers): they hold about 1GB of VRAM.
+**Close GPU-heavy apps first, from the system tray too:** Riot Client/Vanguard,
+Overwolf, Steam, Discord, LM Studio, extra browser windows. PaddleOCR-VL alone fills most
+of the 8GB; when VRAM is full, Windows spills to normal RAM and the GPU slows to a crawl
+(seen on the first run: 7.9GB used, GPU-Util 13%).
 
 ```bash
-python scripts/gpu_check.py
+python scripts/gpu_check.py --skip glm_ocr
+python scripts/gpu_check.py --only paddle_vl      # re-run a single step
 ```
+
+Each step prints a `>>> PASS` / `>>> FAIL` line when it finishes. Ctrl+C stops the
+current step and still prints the summary.
 
 It runs each model on the synthetic sample one at a time and prints PASS/FAIL, time and
 peak VRAM. **Send Claude the summary table at the end.** The first run downloads the

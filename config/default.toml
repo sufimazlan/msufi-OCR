@@ -1,0 +1,43 @@
+# Default settings. Do not put machine-specific values here:
+# copy what you need into config/local.toml (gitignored) and it overrides this file.
+
+[ingest]
+dpi = 250                      # 200-300 per CLAUDE.md
+max_skew_degrees = 5.0
+# 0/90 rotation is fixed with OpenCV. Upside-down (180) pages need a classifier:
+# when PaddleOCR is installed, its PP-LCNet doc-orientation model is used.
+use_paddle_orientation = true
+
+[engines]
+layout = "paddle_vl"           # paddle_vl | glm_ocr | pdftext (dev only, born-digital PDFs)
+lines = "ppocr"                # ppocr | pdftext | none
+
+[paddle_vl]
+# Extra keyword arguments passed to paddleocr.PaddleOCRVL(...), e.g. a pipeline version.
+kwargs = {}
+
+[ppocr]
+kwargs = { use_doc_orientation_classify = false, use_doc_unwarping = false, use_textline_orientation = false }
+
+[ollama]
+# From WSL2 this reaches Windows Ollama only with mirrored networking (docs/setup-gpu.md).
+url = "http://localhost:11434"
+extract_model = "qwen3.5-4b"
+glm_ocr_model = "glm-ocr"
+glm_ocr_prompt = "Text Recognition:"
+num_ctx = 8192
+timeout_seconds = 300
+# "0" unloads the model right after each call, freeing VRAM for the OCR engines.
+keep_alive = "5m"
+
+[validation]
+amount_tolerance = 0.02        # RM; rounding slack for sums
+allowed_tax_rates = [0, 5, 6, 8, 10]   # percent; Malaysian sales tax 5/10, service tax 6/8
+max_invoice_age_days = 730
+max_future_days = 3
+
+[paths]
+vendor_master = "samples/vendor_master.csv"
+thresholds = "config/thresholds.json"
+# Temporary duplicate-invoice registry until the database is decided (M2).
+registry = "data/registry.sqlite"

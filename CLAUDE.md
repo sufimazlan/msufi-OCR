@@ -17,9 +17,22 @@ architecture choices briefly.
 - Never put real company documents in this repo, and never read them during development.
   Use synthetic or redacted samples in /samples. Real test documents live outside the
   repo and are evaluated only by local scripts that output aggregate metrics.
-- Hardware: PC with an RTX 4060 (8GB VRAM) and 32GB RAM. Docker is available.
-  Secondary machine: MacBook Air M4 (16GB), which can run MLX models.
+- Hardware: PC with an RTX 4060 Ti (8GB VRAM) and 32GB RAM. Secondary machine:
+  MacBook Air M4 (16GB), which can run MLX models. Confirmed setup is under
+  "Environment" below.
 - The GPU is a single shared resource, so jobs run through a queue, one at a time.
+
+## Environment (confirmed 2026-10-12, GPU PC)
+- Windows 11, NVIDIA driver 566.36 (CUDA 12.7). The desktop apps use about 1GB of VRAM,
+  so plan for about 7GB free.
+- Python 3.11.9 on Windows. WSL2 with Ubuntu 24.04 is installed for the PaddleOCR engines.
+- Ollama 0.40.3 on Windows. Qwen3.5-4B Q4_K_M was imported from LM Studio's GGUF as the
+  Ollama model `qwen3.5-4b` (about 3.0GB VRAM at 4096 context, 100% GPU).
+- Docker is NOT installed. The PaddleOCR engines run in a Python venv inside WSL2
+  (see docs/setup-gpu.md).
+- Repo clone on the PC: `C:\Users\sufim\Dev\msufi-OCR` (in WSL:
+  `/mnt/c/Users/sufim/Dev/msufi-OCR`). Git commands are run from Windows PowerShell.
+- Work laptop (Intel iGPU, 8GB RAM): code review and CPU-only tests only. No models.
 
 ## Pipeline (decided)
 1. **Ingest:** render each PDF page to an image at 200–300 DPI with PyMuPDF, then fix

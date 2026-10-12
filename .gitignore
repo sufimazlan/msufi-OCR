@@ -29,7 +29,7 @@ output/
 
 # Local config overrides
 .env
-config/thresholds.local.json
+config/local.toml
 
 # OS / editors
 .DS_Store

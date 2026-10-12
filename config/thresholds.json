@@ -1,0 +1,8 @@
+{
+  "calibrated": false,
+  "note": "Placeholder values. Run scripts/calibrate.py on the real test set to replace them.",
+  "yellow_below": 0.9,
+  "red_below": 0.6,
+  "ocr_agree_min_ratio": 85,
+  "vendor_match_min_ratio": 88
+}

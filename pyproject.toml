@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "ocrmod"
 version = "0.1.0"
 description = "Local OCR document module for AP: ingest scanned PDFs, extract fields, flag for review, export."
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "pymupdf>=1.24",
     "opencv-python-headless>=4.9",
@@ -33,4 +33,4 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"

@@ -29,6 +29,9 @@ class LineEngine(Protocol):
 
 
 def free_paddle_gpu() -> None:
+    import gc
+
+    gc.collect()  # drop the model objects first, or empty_cache has nothing to release
     try:
         import paddle  # type: ignore
 

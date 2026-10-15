@@ -23,8 +23,11 @@ architecture choices briefly.
 - The GPU is a single shared resource, so jobs run through a queue, one at a time.
 
 ## Environment (confirmed 2026-10-12, GPU PC)
-- Windows 11, NVIDIA driver 566.36 (CUDA 12.7). The desktop apps use about 1GB of VRAM,
-  so plan for about 7GB free.
+- Windows 11, NVIDIA driver 610.88 (CUDA 13.3; was 566.36 at setup). With GPU-heavy apps
+  closed, the desktop uses about 1.3GB of VRAM.
+- Sufi wants the pipeline to stay within about 5GB of VRAM: Paddle engines are capped by
+  `[gpu] paddle_memory_limit_mb` (FLAGS_gpu_memory_limit_mb), Qwen uses about 3GB and
+  loads only after Paddle has released its memory.
 - Python 3.11.9 on Windows. WSL2 with Ubuntu 24.04 is installed for the PaddleOCR engines.
 - Ollama 0.40.3 on Windows. Qwen3.5-4B Q4_K_M was imported from LM Studio's GGUF as the
   Ollama model `qwen3.5-4b` (about 3.0GB VRAM at 4096 context, 100% GPU).

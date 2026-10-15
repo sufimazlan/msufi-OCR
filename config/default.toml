@@ -8,6 +8,13 @@ max_skew_degrees = 5.0
 # when PaddleOCR is installed, its PP-LCNet doc-orientation model is used.
 use_paddle_orientation = true
 
+[gpu]
+# Hard cap on GPU memory for the Paddle engines (PaddleOCR-VL, PP-OCR, orientation), in MB.
+# CUDA itself adds a few hundred MB, so 4500 keeps the total near 5GB. If a model needs
+# more it stops with an out-of-memory error instead of spilling into RAM and crawling.
+# 0 = no cap. Qwen (Ollama, about 3GB) is not affected; it loads after Paddle is done.
+paddle_memory_limit_mb = 4500
+
 [engines]
 layout = "paddle_vl"           # paddle_vl | glm_ocr | pdftext (dev only, born-digital PDFs)
 lines = "ppocr"                # ppocr | pdftext | none

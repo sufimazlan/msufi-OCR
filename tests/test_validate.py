@@ -65,3 +65,16 @@ def test_registry_ignores_rerun_of_same_file(tmp_path):
     assert reg.duplicates("V1", "INV1", "sha-a") == []
     assert reg.duplicates("V1", "INV1", "sha-b") == ["a.pdf"]
     reg.close()
+
+
+def test_apply_gpu_limits_sets_env_but_respects_existing(monkeypatch):
+    from ocrmod.config import apply_gpu_limits
+
+    monkeypatch.delenv("FLAGS_gpu_memory_limit_mb", raising=False)
+    s = Settings.load()
+    apply_gpu_limits(s)
+    import os
+    assert os.environ["FLAGS_gpu_memory_limit_mb"] == str(s["gpu"]["paddle_memory_limit_mb"])
+    monkeypatch.setenv("FLAGS_gpu_memory_limit_mb", "3000")
+    apply_gpu_limits(s)
+    assert os.environ["FLAGS_gpu_memory_limit_mb"] == "3000"

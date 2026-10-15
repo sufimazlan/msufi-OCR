@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -59,3 +60,11 @@ class Settings:
             if override and override.exists():
                 data = _merge(data, tomllib.loads(override.read_text(encoding="utf-8")))
         return cls(data)
+
+
+def apply_gpu_limits(settings: Settings) -> None:
+    """Cap Paddle's GPU memory. Must run before paddle is first imported; an existing
+    FLAGS_gpu_memory_limit_mb environment variable wins."""
+    limit = int(settings.data.get("gpu", {}).get("paddle_memory_limit_mb", 0))
+    if limit > 0:
+        os.environ.setdefault("FLAGS_gpu_memory_limit_mb", str(limit))

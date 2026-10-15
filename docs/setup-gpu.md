@@ -95,6 +95,10 @@ Overwolf, Steam, Discord, LM Studio, extra browser windows. PaddleOCR-VL alone f
 of the 8GB; when VRAM is full, Windows spills to normal RAM and the GPU slows to a crawl
 (seen on the first run: 7.9GB used, GPU-Util 13%).
 
+Paddle is capped at `paddle_memory_limit_mb` (default 4500MB, about 5GB with CUDA's own
+overhead) in `config/default.toml`; change it in `config/local.toml`. Over the cap it fails
+with an out-of-memory error rather than crawling.
+
 ```bash
 python scripts/gpu_check.py --skip glm_ocr
 python scripts/gpu_check.py --only paddle_vl      # re-run a single step

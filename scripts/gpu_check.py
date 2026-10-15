@@ -25,7 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from ocrmod.config import REPO_ROOT, Settings  # noqa: E402
+from ocrmod.config import REPO_ROOT, Settings, apply_gpu_limits  # noqa: E402
 
 SAMPLE = REPO_ROOT / "samples" / "synthetic" / "inv-01-layout-a.pdf"
 EXPECT = "INV-2026-0412"
@@ -103,6 +103,11 @@ def main() -> None:
     steps = ["nvidia", "paddle", "ollama", "orientation", "ppocr", "paddle_vl", "glm_ocr"]
     skip = set(args.skip) | ({s for s in steps if s not in args.only} if args.only else set())
     settings = Settings.load()
+    apply_gpu_limits(settings)
+    import os
+
+    cap = os.environ.get("FLAGS_gpu_memory_limit_mb")
+    print(f"Paddle GPU memory cap: {cap + ' MB' if cap else 'none'}")
     tmp = Path(tempfile.mkdtemp(prefix="ocrmod-gpucheck-"))
 
     @step("nvidia", skip)

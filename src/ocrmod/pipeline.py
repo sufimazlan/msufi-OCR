@@ -16,7 +16,7 @@ import re
 from dataclasses import asdict
 from pathlib import Path
 
-from .config import Settings
+from .config import Settings, apply_gpu_limits
 from .confidence import save_crops, score_fields
 from .engines import make_layout_engine, make_line_engine
 from .extract import Extractor, OllamaExtractor
@@ -55,6 +55,7 @@ def run_batch(pdfs: list[Path], out_root: Path, settings: Settings, company: str
               doc_type: str = "invoice", layout_name: str | None = None,
               lines_name: str | None = None, extractor: Extractor | None = None,
               registry_path: Path | None = None) -> list[DocumentResult]:
+    apply_gpu_limits(settings)
     layout_name = layout_name or settings["engines"]["layout"]
     lines_name = lines_name or settings["engines"]["lines"]
     ing = settings["ingest"]

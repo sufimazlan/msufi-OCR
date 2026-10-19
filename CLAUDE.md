@@ -29,10 +29,15 @@ architecture choices briefly.
   by `[gpu] paddle_memory_limit_mb` (FLAGS_gpu_memory_limit_mb); Qwen uses about 3GB and
   loads only after Paddle has released its memory.
 - PaddleOCR-VL-1.6 in Paddle's built-in (paddle_dynamic) mode, measured 2026-10-20 on one
-  A4 page at 250 DPI: 18s per page; Paddle memory load peak 5.9GB (paddlex reads the
-  weights onto the GPU, then converts them), 2.8GB after loading, 5.2GB while reading;
-  whole-GPU peak 7.9GB. A 4500MB cap fails to load, so the cap is 6500MB. 5GB would need
-  vLLM server mode or smaller page images.
+  A4 page at 250 DPI: about 12s per page; Paddle memory load peak 5.8GB, 2.9GB after
+  loading, 5.3GB while reading; whole-GPU peak 7.9GB. Paddle cap is 6500MB (4500 fails to
+  load). 5GB would need vLLM server mode or smaller page images.
+- `paddle_vl.patch_weight_conversion()` makes paddlex read/convert the weights on the CPU
+  (`[paddle_vl] cpu_weight_conversion`). It saves only ~0.2GB, but without it the full
+  gpu_check failed under the 6500MB cap. It patches paddlex internals: suspect it first if
+  loading breaks after a paddleocr/paddlex upgrade.
+- gpu_check 2026-10-20: all of nvidia, paddle, ollama (logprobs OK, 6s), orientation
+  (0/90/180/270 ok), paddle_vl, ppocr (PP-OCRv6, conf 0.997) PASS in one process.
 - PaddleOCR-VL hangs forever in cuLibraryGetModule (CUDA lazy loading) on the first
   generation step under WSL2: GPU idle, Ctrl+C ignored. Fixed with
   CUDA_MODULE_LOADING=EAGER (`[gpu] cuda_module_loading`). Diagnose hangs with

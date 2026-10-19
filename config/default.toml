@@ -22,6 +22,9 @@ lines = "ppocr"                # ppocr | pdftext | none
 [paddle_vl]
 # Extra keyword arguments passed to paddleocr.PaddleOCRVL(...), e.g. a pipeline version.
 kwargs = {}
+# Passed to each predict() call. use_queues=false reads a page in one sequence instead of
+# background worker threads: same output, and errors/Ctrl+C show where it really is.
+predict_kwargs = { use_queues = false }
 
 [ppocr]
 kwargs = { use_doc_orientation_classify = false, use_doc_unwarping = false, use_textline_orientation = false }

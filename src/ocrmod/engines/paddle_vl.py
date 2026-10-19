@@ -6,18 +6,23 @@ between releases; scripts/gpu_check.py exercises this wrapper against the instal
 
 from __future__ import annotations
 
+import logging
 import tempfile
+import time
 from pathlib import Path
 
 from ..schemas import IngestedDoc
 from .base import free_paddle_gpu, paddle_memory_mb, reset_paddle_peak
 
+log = logging.getLogger(__name__)
+
 
 class PaddleVLEngine:
     name = "paddle_vl"
 
-    def __init__(self, **kwargs):
+    def __init__(self, predict_kwargs: dict | None = None, **kwargs):
         self.kwargs = kwargs
+        self.predict_kwargs = predict_kwargs or {}
         self._pipeline = None
         self.memory: dict[str, float | None] = {}
 
@@ -37,9 +42,11 @@ class PaddleVLEngine:
     def parse(self, doc: IngestedDoc) -> list[str]:
         pipeline = self._load()
         pages = []
-        for img in doc.page_images:
-            res = next(iter(pipeline.predict(str(img))))
+        for n, img in enumerate(doc.page_images, start=1):
+            t0 = time.time()
+            res = next(iter(pipeline.predict(str(img), **self.predict_kwargs)))
             pages.append(_markdown_of(res))
+            log.warning("paddle_vl page %d/%d: %.1fs", n, len(doc.page_images), time.time() - t0)
         self.memory["reading_peak_mb"] = paddle_memory_mb()[1]
         return pages
 

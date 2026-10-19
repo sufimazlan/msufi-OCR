@@ -11,6 +11,7 @@ import copy
 import json
 import logging
 import math
+import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -45,10 +46,44 @@ def inline_schema(schema: dict) -> dict:
     return resolve(schema)
 
 
-EXTRACTION_SCHEMA = inline_schema(InvoiceExtraction.model_json_schema())
+def require_all(schema: dict) -> dict:
+    """Make every property required (values stay nullable) and drop defaults.
+
+    Pydantic leaves fields with defaults out of "required". The grammar Ollama builds from
+    the schema then lets the model close the JSON object early: on the first real sample
+    Qwen wrote vendor_name, vendor_tax_id and invoice_number and stopped, so every later
+    field came back null. With all keys required, the model must write each one in order
+    and can only choose null as the value.
+    """
+    def visit(node):
+        if isinstance(node, dict):
+            node.pop("default", None)
+            if node.get("type") == "object" and "properties" in node:
+                node["required"] = list(node["properties"])
+            for value in node.values():
+                visit(value)
+        elif isinstance(node, list):
+            for value in node:
+                visit(value)
+        return node
+
+    return visit(copy.deepcopy(schema))
+
+
+EXTRACTION_SCHEMA = require_all(inline_schema(InvoiceExtraction.model_json_schema()))
+
+
+_HTML_NOISE = re.compile(r"""\s+(?:style|border|class|align|width|height)=(?:'[^']*'|"[^"]*"|\S+)""")
+
+
+def compact_html(markdown: str) -> str:
+    """Drop presentation attributes (PaddleOCR-VL adds a long style= to every table cell);
+    they are over half the characters of a typical invoice table and carry no content."""
+    return _HTML_NOISE.sub("", markdown)
 
 
 def build_prompt(markdown: str, max_chars: int) -> tuple[str, bool]:
+    markdown = compact_html(markdown)
     truncated = len(markdown) > max_chars
     body = markdown[:max_chars]
     return f"Document (Markdown, tables as HTML):\n\n{body}\n\nReturn the JSON.", truncated
@@ -161,6 +196,7 @@ class ExtractionResult:
     data: dict[str, Any]
     token_probs: dict[str, float] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
+    raw: str = ""  # the model's JSON exactly as returned
 
 
 class Extractor(Protocol):
@@ -213,13 +249,16 @@ class OllamaExtractor:
         content = body["message"]["content"]
         data = InvoiceExtraction.model_validate_json(content).model_dump()
         warnings = ["Document text was truncated to fit the model context"] if truncated else []
+        missing = [k for k in EXTRACTION_SCHEMA["properties"] if k not in json.loads(content)]
+        if missing:
+            warnings.append(f"Model left out fields (treated as empty): {', '.join(missing)}")
         logprobs = body.get("logprobs")
         if logprobs:
             probs = field_token_probs(content, logprobs)
         else:
             probs = {}
             warnings.append("Ollama returned no logprobs; token-probability signal missing")
-        return ExtractionResult(data=data, token_probs=probs, warnings=warnings)
+        return ExtractionResult(data=data, token_probs=probs, warnings=warnings, raw=content)
 
     def unload(self) -> None:
         try:

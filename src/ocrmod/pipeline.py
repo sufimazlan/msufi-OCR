@@ -156,7 +156,8 @@ def _finish(w: _Work, extractor, vendors, registry, th, settings, company, doc_t
             res.extraction = ex.data
             res.warnings += ex.warnings
             (w.out_dir / "extraction.json").write_text(
-                json.dumps({"data": ex.data, "token_probs": ex.token_probs}, indent=1), encoding="utf-8")
+                json.dumps({"data": ex.data, "token_probs": ex.token_probs, "raw": ex.raw,
+                            "warnings": ex.warnings}, indent=1), encoding="utf-8")
             data = ex.data
             vendor = vendors.match(data.get("vendor_name"), data.get("vendor_tax_id"))
             matched = vendor.ratio >= th.vendor_match_min_ratio

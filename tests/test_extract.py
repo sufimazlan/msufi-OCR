@@ -10,6 +10,16 @@ def test_schema_is_self_contained():
     assert "line_items" in EXTRACTION_SCHEMA["properties"]
 
 
+def test_schema_requires_every_field_so_the_model_cannot_stop_early():
+    top = EXTRACTION_SCHEMA
+    assert top["required"] == list(top["properties"])
+    item = top["properties"]["line_items"]["items"]
+    assert item["required"] == ["description", "quantity", "unit_price", "amount"]
+    assert '"default"' not in json.dumps(top)
+    # Values stay nullable.
+    assert {"type": "null"} in top["properties"]["total"]["anyOf"]
+
+
 def test_leaf_spans_paths():
     content = '{"total": 894.24, "vendor_name": "A \\"B\\" Sdn Bhd", "line_items": [{"amount": 5}], "po_number": null}'
     spans = leaf_spans(content)
@@ -62,3 +72,15 @@ def test_ollama_extractor_request_and_logprobs(monkeypatch):
     assert result.data["invoice_number"] == "INV-9" and result.data["vendor_name"] is None
     assert result.token_probs["total"] == math.exp(math.log(0.55))
     assert result.token_probs["invoice_number"] == math.exp(math.log(0.7))
+    assert result.raw == content
+    assert any("left out fields" in w and "vendor_name" in w for w in result.warnings)
+
+
+def test_compact_html_strips_cell_styles_but_keeps_content():
+    from ocrmod.extract import compact_html
+
+    md = ("<table border=1 style='margin: auto; word-wrap: break-word;'><tr>"
+          "<td style='text-align: center; word-wrap: break-word;'>TOTAL (MYR)</td>"
+          "<td style='text-align: center; word-wrap: break-word;'>894.24</td></tr></table>")
+    assert compact_html(md) == "<table><tr><td>TOTAL (MYR)</td><td>894.24</td></tr></table>"
+    assert compact_html("Date: 14/09/2026") == "Date: 14/09/2026"

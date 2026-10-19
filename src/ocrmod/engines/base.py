@@ -48,3 +48,23 @@ def result_get(res, key: str):
     except (KeyError, TypeError):
         data = getattr(res, "json", None) or {}
         return data.get("res", data).get(key)
+
+
+def paddle_memory_mb() -> tuple[float | None, float | None]:
+    """(currently allocated, peak allocated) by Paddle on the GPU, in MB."""
+    try:
+        import paddle  # type: ignore
+
+        cuda = paddle.device.cuda
+        return cuda.memory_allocated() / 2**20, cuda.max_memory_allocated() / 2**20
+    except Exception:
+        return None, None
+
+
+def reset_paddle_peak() -> None:
+    try:
+        import paddle  # type: ignore
+
+        paddle.device.cuda.reset_max_memory_allocated()
+    except Exception:
+        pass

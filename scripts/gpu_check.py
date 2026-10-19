@@ -184,11 +184,16 @@ def main() -> None:
 
         doc = ingest(SAMPLE, tmp / "vl", use_paddle_orientation=False)
         eng = make_layout_engine("paddle_vl", settings)
-        md = eng.parse(doc)[0]
+        try:
+            md = eng.parse(doc)[0]
+        finally:
+            print(f"Paddle memory so far: {eng.memory}")
         eng.close()
         (tmp / "paddle_vl.md").write_text(md, encoding="utf-8")
+        mem = ", ".join(f"{k}={v:.0f}MB" for k, v in eng.memory.items() if v is not None)
+        print(f"Paddle memory: {mem or 'n/a'}")
         assert EXPECT in md, f"invoice number not in Markdown; see {tmp / 'paddle_vl.md'}"
-        return f"{len(md)} chars of Markdown, table={'<table' in md}"
+        return f"{len(md)} chars of Markdown, table={'<table' in md}, {mem}"
 
     @step("glm_ocr", skip)
     def glm_ocr():

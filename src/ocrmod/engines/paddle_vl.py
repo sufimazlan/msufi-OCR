@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 
 from ..schemas import IngestedDoc
-from .base import free_paddle_gpu
+from .base import free_paddle_gpu, paddle_memory_mb, reset_paddle_peak
 
 
 class PaddleVLEngine:
@@ -19,12 +19,19 @@ class PaddleVLEngine:
     def __init__(self, **kwargs):
         self.kwargs = kwargs
         self._pipeline = None
+        self.memory: dict[str, float | None] = {}
 
     def _load(self):
         if self._pipeline is None:
             from paddleocr import PaddleOCRVL  # type: ignore
 
             self._pipeline = PaddleOCRVL(**self.kwargs)
+            # Loading leaves temporary copies of the weights on the GPU (paddlex reads the
+            # file onto the GPU, then converts it); hand that memory back.
+            free_paddle_gpu()
+            self.memory["load_peak_mb"] = paddle_memory_mb()[1]
+            self.memory["after_load_mb"] = paddle_memory_mb()[0]
+            reset_paddle_peak()
         return self._pipeline
 
     def parse(self, doc: IngestedDoc) -> list[str]:
@@ -33,6 +40,7 @@ class PaddleVLEngine:
         for img in doc.page_images:
             res = next(iter(pipeline.predict(str(img))))
             pages.append(_markdown_of(res))
+        self.memory["reading_peak_mb"] = paddle_memory_mb()[1]
         return pages
 
     def close(self) -> None:

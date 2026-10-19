@@ -55,7 +55,16 @@ max_invoice_age_days = 730
 max_future_days = 3
 
 [paths]
+# Uploads, results and databases. Must be OUTSIDE the repo: real documents and their
+# extracted values must never be committed. In WSL, ~ is /home/<user>.
+data_dir = "~/ocrmod-data"
 vendor_master = "samples/vendor_master.csv"
 thresholds = "config/thresholds.json"
-# Temporary duplicate-invoice registry until the database is decided (M2).
-registry = "data/registry.sqlite"
+# Duplicate-invoice registry (vendor + invoice number of every processed document).
+registry = "~/ocrmod-data/registry.sqlite"
+
+[web]
+host = "127.0.0.1"           # local only; not reachable from other machines
+port = 8000
+max_upload_mb = 100          # per file
+poll_seconds = 2             # how often the progress page refreshes

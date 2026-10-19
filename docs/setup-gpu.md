@@ -121,8 +121,26 @@ PowerShell first (check the exact name at https://ollama.com/library):
 ocrmod process samples/synthetic --company TEST
 ```
 
-Open the Excel file it prints (it is under `output/`, which Windows Explorer shows at
-`C:\Users\sufim\Dev\msufi-OCR\output\`).
+Open the Excel file it prints. Results live in `~/ocrmod-data` inside Ubuntu (outside the
+repo); Windows Explorer shows that folder at `\\wsl$\Ubuntu-24.04\home\sufim\ocrmod-data`.
+
+## 6. Upload page
+
+After `git pull`, install the web dependencies once (inside the venv):
+
+```bash
+pip install -e ".[dev]"
+```
+
+Then start it and open http://localhost:8000 in a Windows browser:
+
+```bash
+ocrmod serve
+```
+
+Upload PDFs, watch each document move through the stages, and download the Excel file
+when the batch says Done. Keep the Ubuntu window open while it works. With mirrored
+networking (step 1), Windows reaches the page at `localhost`.
 
 ## Troubleshooting
 

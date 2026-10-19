@@ -1,0 +1,41 @@
+{# Swapped in every few seconds while the batch is queued or processing; once it is done
+   or failed the returned block has no hx-trigger, so polling stops by itself. #}
+<div id="status"
+  {% if batch.status in ("queued", "processing") %}
+  hx-get="/batches/{{ batch.id }}/status" hx-trigger="every {{ poll_seconds }}s" hx-swap="outerHTML"
+  {% endif %}>
+  {% if batch.status == "queued" %}
+    <p class="state">Waiting in the queue{% if ahead %} &middot; {{ ahead }} batch(es) ahead{% endif %}&hellip;</p>
+  {% elif batch.status == "processing" %}
+    <p class="state">{{ summary.stage_text or "Starting&hellip;"|safe }}</p>
+    <div class="bar"><div style="width: {{ summary.percent }}%"></div></div>
+    <p class="hint">{{ summary.finished }} of {{ summary.total }} finished. Models load once per batch, so the first document takes longest.</p>
+  {% elif batch.status == "done" %}
+    <p class="state ok">Done.</p>
+    <a class="button" href="/batches/{{ batch.id }}/export.xlsx">Download Excel</a>
+  {% else %}
+    <p class="state bad">Batch failed: {{ batch.error }}</p>
+  {% endif %}
+
+  <table>
+    <thead><tr><th>File</th><th>Status</th><th>Flags</th></tr></thead>
+    <tbody>
+    {% for d in batch.documents %}
+      <tr>
+        <td>{{ d.filename }}</td>
+        <td>
+          {% if d.status == "processing" %}<span class="badge processing">{{ STAGES.get(d.stage, d.stage) }}</span>
+          {% else %}<span class="badge {{ d.status }}">{{ d.status }}</span>{% endif %}
+          {% if d.error %}<div class="error">{{ d.error }}</div>{% endif %}
+        </td>
+        <td>
+          {% if d.status == "done" %}
+            {% if d.flags %}<span class="flag {{ 'red' if d.red_flags else 'yellow' }}">{{ d.flags }} to check{% if d.red_flags %} ({{ d.red_flags }} red){% endif %}</span>
+            {% else %}<span class="flag green">clean</span>{% endif %}
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>

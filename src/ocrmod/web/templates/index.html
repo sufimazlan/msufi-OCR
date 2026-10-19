@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h1>Upload scanned PDFs</h1>
+  <form action="/batches" method="post" enctype="multipart/form-data">
+    <label>PDF files
+      <input type="file" name="files" accept="application/pdf,.pdf" multiple required>
+    </label>
+    <div class="row">
+      <label>Company
+        <input type="text" name="company" placeholder="e.g. SUB-A" maxlength="100">
+      </label>
+      <label>Document type
+        <select name="doc_type"><option value="invoice">Supplier invoice</option></select>
+      </label>
+    </div>
+    <button type="submit">Upload and process</button>
+    <p class="hint">Files are processed one batch at a time on this PC's GPU and stay on this PC.</p>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Recent batches</h2>
+  {% if rows %}
+  <table>
+    <thead><tr><th>#</th><th>Uploaded</th><th>Company</th><th>Documents</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for b, sm in rows %}
+      <tr>
+        <td>{{ b.id }}</td>
+        <td>{{ b.created_at.strftime("%d %b %H:%M") }}</td>
+        <td>{{ b.company or "-" }}</td>
+        <td>{{ sm.total }}</td>
+        <td><span class="badge {{ b.status }}">{{ b.status }}</span></td>
+        <td><a href="/batches/{{ b.id }}">open</a>{% if b.status == "done" %} &middot; <a href="/batches/{{ b.id }}/export.xlsx">Excel</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="hint">Nothing uploaded yet.</p>{% endif %}
+</section>
+{% endblock %}

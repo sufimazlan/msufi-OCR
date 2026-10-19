@@ -6,8 +6,8 @@ machines (PDPA): no document content goes to any cloud service.
 
 The full brief, constraints and decisions are in [CLAUDE.md](CLAUDE.md).
 
-**Status:** M1, the command-line pipeline. The API and job queue (M2), dashboard (M3), and
-review queue (M4) come next, after the open decisions in CLAUDE.md are made.
+**Status:** M1 (command-line pipeline) done; M2/M3 started: a local upload page with a GPU
+queue, live progress and Excel download. Review queue (M4) and the document view come next.
 
 ## How it works
 
@@ -44,6 +44,7 @@ src/ocrmod/
   confidence.py           6  per-field score, flags, crops
   export_excel.py         8  Excel with colour flags
   pipeline.py, cli.py     batch runner and the `ocrmod` command
+  web/                    upload page, GPU worker queue, progress (FastAPI + HTMX)
 scripts/gpu_check.py      test each model on the GPU PC (time, peak VRAM)
 scripts/evaluate.py       accuracy on the real test set (aggregate output only)
 scripts/calibrate.py      fit the flag thresholds from an evaluation report
@@ -54,14 +55,28 @@ tests/                    run anywhere, no GPU needed
 
 ## Running it
 
-**GPU PC:** follow [docs/setup-gpu.md](docs/setup-gpu.md) once. Then, in Ubuntu:
+**GPU PC, upload page:** in Ubuntu,
 
 ```bash
 source ~/venvs/ocrmod/bin/activate
 cd /mnt/c/Users/sufim/Dev/msufi-OCR
-ocrmod process path/to/pdfs --company SUB-A          # writes output/<timestamp>/export.xlsx
+ocrmod serve
+```
+
+then open http://localhost:8000 in a Windows browser. Upload PDFs, watch the progress, and
+download the Excel file when it says Done. Batches run one at a time (one GPU). Keep the
+Ubuntu window open while it works; Ctrl+C stops the server, and an unfinished batch starts
+again the next time you run `ocrmod serve`. Uploaded files and results are stored in
+`~/ocrmod-data` (outside the repo).
+
+**GPU PC, command line:** follow [docs/setup-gpu.md](docs/setup-gpu.md) once. Then, in Ubuntu:
+
+```bash
+source ~/venvs/ocrmod/bin/activate
+cd /mnt/c/Users/sufim/Dev/msufi-OCR
+ocrmod process path/to/pdfs --company SUB-A          # writes ~/ocrmod-data/runs/<timestamp>/export.xlsx
 ocrmod process a.pdf --layout-engine glm_ocr         # try the backup engine
-ocrmod export output/20261013-101500                 # rebuild the Excel from a run
+ocrmod export ~/ocrmod-data/runs/20261013-101500     # rebuild the Excel from a run
 ```
 
 **Any machine without the models (work laptop, Windows PowerShell):** tests and the dev
@@ -77,8 +92,8 @@ python -m pytest -q
 
 Each run folder has one sub-folder per document with the page images, `layout.md` (engine 1),
 `lines.json` (engine 2), `extraction.json` (Qwen + token probabilities), `result.json`
-(fields, flags, checks) and `crops/`. `output/` is gitignored. **Never commit it after
-running real documents.**
+(fields, flags, checks) and `crops/`. All of it lives in `~/ocrmod-data`, outside the repo,
+so real documents and their values can't be committed by accident.
 
 ## Accuracy test and calibration (real documents stay outside the repo)
 

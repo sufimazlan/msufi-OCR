@@ -47,7 +47,7 @@ class Settings:
         return self.data[section]
 
     def path(self, key: str) -> Path:
-        p = Path(self.data["paths"][key])
+        p = Path(self.data["paths"][key]).expanduser()
         return p if p.is_absolute() else REPO_ROOT / p
 
     def thresholds(self) -> Thresholds:

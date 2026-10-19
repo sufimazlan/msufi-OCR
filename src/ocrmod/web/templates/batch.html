@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Batch {{ batch.id }} · OCR Documents{% endblock %}
+{% block content %}
+<section class="card">
+  <p><a href="/">&larr; Upload more</a></p>
+  <h1>Batch {{ batch.id }}{% if batch.company %} &middot; {{ batch.company }}{% endif %}</h1>
+  <p class="hint">Uploaded {{ batch.created_at.strftime("%d %b %Y %H:%M") }} &middot; {{ batch.documents|length }} document(s)</p>
+  {% include "_status.html" %}
+</section>
+{% endblock %}

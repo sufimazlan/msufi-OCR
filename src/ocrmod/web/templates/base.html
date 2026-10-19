@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}OCR Documents{% endblock %}</title>
+<script src="/static/htmx.min.js"></script>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header><a href="/" class="brand">OCR Documents</a><span class="local">local only &middot; this PC</span></header>
+<main>{% block content %}{% endblock %}</main>
+</body>
+</html>

@@ -95,12 +95,19 @@ architecture choices briefly.
 - Measure field-level accuracy, compare PaddleOCR-VL against GLM-OCR, and run
   Unlimited-OCR on long statements
 
+## Decisions made (2026-10-20)
+- Web stack: FastAPI + HTMX (server-rendered pages, htmx vendored in
+  src/ocrmod/web/static, no CDN). `ocrmod serve` runs it.
+- Database: SQLite for now (`<data_dir>/ocrmod.sqlite`), via SQLAlchemy so it can move to
+  PostgreSQL or SQL Server later.
+- First version: one user on the GPU PC, bound to 127.0.0.1, no login.
+- Uploads, results, the duplicate registry and the jobs DB live in `[paths] data_dir`
+  (default `~/ocrmod-data`, outside the repo).
+
 ## Open decisions (ask Sufi before building)
-- Web stack: e.g. FastAPI with React or HTMX; .NET with SQL Server to match existing
-  internal tools; or an Odoo module
-- Database: PostgreSQL or SQL Server
-- Authentication, users and multi-company setup
+- Authentication, users and multi-company setup (needed before the AP team uses it)
 - Deployment: a single PC or a shared server; OS details
+- Final database for a shared deployment: PostgreSQL or SQL Server
 
 ## Working style
 Plan first. Propose the architecture and folder structure, then build in milestones:

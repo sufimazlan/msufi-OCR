@@ -15,6 +15,7 @@ import logging
 import re
 from dataclasses import asdict
 from pathlib import Path
+from typing import Callable
 
 from .config import Settings, apply_gpu_limits
 from .confidence import save_crops, score_fields
@@ -54,8 +55,12 @@ class _Work:
 def run_batch(pdfs: list[Path], out_root: Path, settings: Settings, company: str | None = None,
               doc_type: str = "invoice", layout_name: str | None = None,
               lines_name: str | None = None, extractor: Extractor | None = None,
-              registry_path: Path | None = None) -> list[DocumentResult]:
+              registry_path: Path | None = None,
+              progress: Callable[[int, str], None] | None = None) -> list[DocumentResult]:
+    """`progress(index, stage)` is called as each document enters a stage: ingest, layout,
+    lines, extract, then done or failed. Used by the web dashboard."""
     apply_gpu_limits(settings)
+    report = progress or (lambda i, stage: None)
     layout_name = layout_name or settings["engines"]["layout"]
     lines_name = lines_name or settings["engines"]["lines"]
     ing = settings["ingest"]
@@ -66,7 +71,8 @@ def run_batch(pdfs: list[Path], out_root: Path, settings: Settings, company: str
     work = [_Work(p, out_root) for p in pdfs]
 
     # Stage 1: ingest (CPU, plus the small orientation model when available)
-    for w in work:
+    for i, w in enumerate(work):
+        report(i, "ingest")
         try:
             tmp = out_root / "_ingest"
             doc = ingest(w.pdf, tmp, ing["dpi"], ing["max_skew_degrees"], ing["use_paddle_orientation"])
@@ -83,22 +89,25 @@ def run_batch(pdfs: list[Path], out_root: Path, settings: Settings, company: str
     _clear(out_root / "_ingest")
 
     # Stage 2: layout engine -> Markdown
-    _run_stage(work, make_layout_engine(layout_name, settings), "layout", _do_layout)
+    _run_stage(work, make_layout_engine(layout_name, settings), "layout", _do_layout, report)
 
     # Stage 3: line engine -> lines with confidence and boxes
     line_engine = make_line_engine(lines_name, settings)
     if line_engine is not None:
-        _run_stage(work, line_engine, "lines", _do_lines)
+        _run_stage(work, line_engine, "lines", _do_lines, report)
 
     # Stage 4-6: extraction, validation, confidence
     vendors = VendorMaster.load(settings.path("vendor_master"))
     registry = Registry(registry_path or settings.path("registry"))
     th = settings.thresholds()
     try:
-        for w in work:
+        for i, w in enumerate(work):
+            if w.error is None:
+                report(i, "extract")
             w.result = _finish(w, extractor, vendors, registry, th, settings, company, doc_type,
                                {"layout": layout_name, "lines": lines_name,
                                 "extractor": getattr(extractor, "name", "custom")})
+            report(i, "failed" if w.result.status == "failed" else "done")
     finally:
         registry.close()
         unload = getattr(extractor, "unload", None)
@@ -113,10 +122,11 @@ def _clear(path: Path) -> None:
     shutil.rmtree(path, ignore_errors=True)
 
 
-def _run_stage(work, engine, label, fn):
+def _run_stage(work, engine, label, fn, report):
     try:
-        for w in work:
+        for i, w in enumerate(work):
             if w.error is None:
+                report(i, label)
                 try:
                     fn(w, engine)
                 except Exception as exc:

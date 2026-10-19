@@ -10,10 +10,15 @@ use_paddle_orientation = true
 
 [gpu]
 # Hard cap on GPU memory for the Paddle engines (PaddleOCR-VL, PP-OCR, orientation), in MB.
-# CUDA itself adds a few hundred MB, so 4500 keeps the total near 5GB. If a model needs
-# more it stops with an out-of-memory error instead of spilling into RAM and crawling.
+# Over the cap Paddle stops with an out-of-memory error instead of spilling into RAM and
+# crawling. Measured on the RTX 4060 Ti (2026-10-20, PaddleOCR-VL-1.6, one A4 page at
+# 250 DPI): load peak 5.9GB, 2.8GB after loading, 5.2GB peak while reading. 4500 fails to
+# load. Whole-GPU peak was 7.9GB including the desktop and CUDA's own overhead.
 # 0 = no cap. Qwen (Ollama, about 3GB) is not affected; it loads after Paddle is done.
-paddle_memory_limit_mb = 4500
+paddle_memory_limit_mb = 6500
+# Load all GPU code at startup. With CUDA's default lazy loading, PaddleOCR-VL hangs forever
+# in cuLibraryGetModule on the first text-generation step under WSL2 (GPU idle, Ctrl+C ignored).
+cuda_module_loading = "EAGER"
 
 [engines]
 layout = "paddle_vl"           # paddle_vl | glm_ocr | pdftext (dev only, born-digital PDFs)

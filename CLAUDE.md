@@ -25,9 +25,18 @@ architecture choices briefly.
 ## Environment (confirmed 2026-10-12, GPU PC)
 - Windows 11, NVIDIA driver 610.88 (CUDA 13.3; was 566.36 at setup). With GPU-heavy apps
   closed, the desktop uses about 1.3GB of VRAM.
-- Sufi wants the pipeline to stay within about 5GB of VRAM: Paddle engines are capped by
-  `[gpu] paddle_memory_limit_mb` (FLAGS_gpu_memory_limit_mb), Qwen uses about 3GB and
+- Sufi would like the pipeline to stay within about 5GB of VRAM. Paddle engines are capped
+  by `[gpu] paddle_memory_limit_mb` (FLAGS_gpu_memory_limit_mb); Qwen uses about 3GB and
   loads only after Paddle has released its memory.
+- PaddleOCR-VL-1.6 in Paddle's built-in (paddle_dynamic) mode, measured 2026-10-20 on one
+  A4 page at 250 DPI: 18s per page; Paddle memory load peak 5.9GB (paddlex reads the
+  weights onto the GPU, then converts them), 2.8GB after loading, 5.2GB while reading;
+  whole-GPU peak 7.9GB. A 4500MB cap fails to load, so the cap is 6500MB. 5GB would need
+  vLLM server mode or smaller page images.
+- PaddleOCR-VL hangs forever in cuLibraryGetModule (CUDA lazy loading) on the first
+  generation step under WSL2: GPU idle, Ctrl+C ignored. Fixed with
+  CUDA_MODULE_LOADING=EAGER (`[gpu] cuda_module_loading`). Diagnose hangs with
+  `sudo env "PATH=$PATH" py-spy dump --native --pid <pid>`.
 - Python 3.11.9 on Windows. WSL2 with Ubuntu 24.04 is installed for the PaddleOCR engines.
 - Ollama 0.40.3 on Windows. Qwen3.5-4B Q4_K_M was imported from LM Studio's GGUF as the
   Ollama model `qwen3.5-4b` (about 3.0GB VRAM at 4096 context, 100% GPU).

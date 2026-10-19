@@ -107,7 +107,8 @@ def main() -> None:
     import os
 
     cap = os.environ.get("FLAGS_gpu_memory_limit_mb")
-    print(f"Paddle GPU memory cap: {cap + ' MB' if cap else 'none'}")
+    print(f"Paddle GPU memory cap: {cap + ' MB' if cap else 'none'}; "
+          f"CUDA_MODULE_LOADING={os.environ.get('CUDA_MODULE_LOADING', 'default (lazy)')}")
     tmp = Path(tempfile.mkdtemp(prefix="ocrmod-gpucheck-"))
 
     @step("nvidia", skip)

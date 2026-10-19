@@ -71,10 +71,12 @@ def test_apply_gpu_limits_sets_env_but_respects_existing(monkeypatch):
     from ocrmod.config import apply_gpu_limits
 
     monkeypatch.delenv("FLAGS_gpu_memory_limit_mb", raising=False)
+    monkeypatch.delenv("CUDA_MODULE_LOADING", raising=False)
     s = Settings.load()
     apply_gpu_limits(s)
     import os
     assert os.environ["FLAGS_gpu_memory_limit_mb"] == str(s["gpu"]["paddle_memory_limit_mb"])
+    assert os.environ["CUDA_MODULE_LOADING"] == "EAGER"
     monkeypatch.setenv("FLAGS_gpu_memory_limit_mb", "3000")
     apply_gpu_limits(s)
     assert os.environ["FLAGS_gpu_memory_limit_mb"] == "3000"

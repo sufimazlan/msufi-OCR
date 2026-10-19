@@ -63,8 +63,11 @@ class Settings:
 
 
 def apply_gpu_limits(settings: Settings) -> None:
-    """Cap Paddle's GPU memory. Must run before paddle is first imported; an existing
-    FLAGS_gpu_memory_limit_mb environment variable wins."""
-    limit = int(settings.data.get("gpu", {}).get("paddle_memory_limit_mb", 0))
+    """Cap Paddle's GPU memory and set CUDA module loading. Must run before paddle is first
+    imported; environment variables already set by the user win."""
+    gpu = settings.data.get("gpu", {})
+    limit = int(gpu.get("paddle_memory_limit_mb", 0))
     if limit > 0:
         os.environ.setdefault("FLAGS_gpu_memory_limit_mb", str(limit))
+    if gpu.get("cuda_module_loading"):
+        os.environ.setdefault("CUDA_MODULE_LOADING", gpu["cuda_module_loading"])

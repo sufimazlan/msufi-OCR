@@ -58,12 +58,22 @@ def test_patch_weight_conversion_moves_state_dict_to_cpu(monkeypatch):
                          for k, v in state_dict.items()})
             return "loaded"
 
-    fake_paddle = types.SimpleNamespace(Tensor=Tensor)
+    device = {"now": "gpu:0"}
+    fake_paddle = types.SimpleNamespace(
+        Tensor=Tensor, get_device=lambda: device["now"],
+        set_device=lambda d: device.__setitem__("now", d))
     modeling = types.SimpleNamespace(PaddleOCRVLForConditionalGeneration=Model)
+    load_devices = []
+    model_utils = types.SimpleNamespace(
+        load_state_dict=lambda path: load_devices.append(device["now"]) or {"w": Tensor("w")})
     monkeypatch.setitem(sys.modules, "paddle", fake_paddle)
     for name in ("paddlex", "paddlex.inference", "paddlex.inference.models",
-                 "paddlex.inference.models.doc_vlm", "paddlex.inference.models.doc_vlm.modeling"):
+                 "paddlex.inference.models.doc_vlm", "paddlex.inference.models.doc_vlm.modeling",
+                 "paddlex.inference.models.common", "paddlex.inference.models.common.transformers"):
         monkeypatch.setitem(sys.modules, name, types.ModuleType(name))
+    tf = types.ModuleType("paddlex.inference.models.common.transformers.transformers")
+    tf.model_utils = model_utils
+    monkeypatch.setitem(sys.modules, tf.__name__, tf)
     pkg = types.ModuleType("paddlex.inference.models.doc_vlm.modeling.paddleocr_vl")
     pkg._paddleocr_vl = modeling
     monkeypatch.setitem(sys.modules, pkg.__name__, pkg)
@@ -74,3 +84,5 @@ def test_patch_weight_conversion_moves_state_dict_to_cpu(monkeypatch):
     out = Model().set_hf_state_dict({"a": Tensor("a"), "b": Tensor("b", cpu=True), "n": 3})
     assert out == "loaded"
     assert seen == {"a": True, "b": True, "n": 3}  # GPU tensor moved to CPU, rest untouched
+    model_utils.load_state_dict("model.safetensors")
+    assert load_devices == ["cpu"] and device["now"] == "gpu:0"  # read on CPU, then restored

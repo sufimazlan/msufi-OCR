@@ -65,16 +65,22 @@ class PaddleVLEngine:
 
 
 def patch_weight_conversion() -> bool:
-    """Convert PaddleOCR-VL's weights in CPU RAM instead of on the GPU.
+    """Load and convert PaddleOCR-VL's weights in CPU RAM instead of on the GPU.
 
-    paddlex reads the weights file onto the GPU, then set_hf_state_dict() glues pieces
-    together (paddle.concat) there, briefly holding several copies: a 5.9GB load peak for a
-    1.9GB model. Moving the state dict to the CPU first makes the concat run in RAM; the
-    original method already moves each converted tensor to the model's device itself
-    (`state_dict[key].to(v1.place)`). Returns False if the class is not where we expect.
+    paddlex reads the weights file with the current default device, which is the GPU while
+    the model is being built, so a full copy of the weights lands on the GPU next to the
+    model being filled; set_hf_state_dict() then concatenates pieces there. Measured load
+    peak: 5.9GB for a 1.9GB model. Here the file is read with the default device set to
+    CPU, and the state dict is moved to the CPU before conversion (in case it arrives on
+    the GPU anyway). set_hf_state_dict() itself already moves each converted tensor to the
+    model's device (`state_dict[key].to(v1.place)`). Returns False if paddlex's layout is
+    not what we expect, leaving loading unchanged.
     """
     try:
         import paddle  # type: ignore
+        from paddlex.inference.models.common.transformers.transformers import (  # type: ignore
+            model_utils,
+        )
         from paddlex.inference.models.doc_vlm.modeling.paddleocr_vl import (  # type: ignore
             _paddleocr_vl as modeling,
         )
@@ -84,7 +90,18 @@ def patch_weight_conversion() -> bool:
     cls = modeling.PaddleOCRVLForConditionalGeneration
     if getattr(cls, "_ocrmod_cpu_conversion", False):
         return True
-    original = cls.set_hf_state_dict
+
+    original_load = model_utils.load_state_dict
+
+    def load_state_dict(*args, **kwargs):
+        previous = paddle.get_device()
+        paddle.set_device("cpu")
+        try:
+            return original_load(*args, **kwargs)
+        finally:
+            paddle.set_device(previous)
+
+    original_set = cls.set_hf_state_dict
 
     def set_hf_state_dict(self, state_dict, *args, **kwargs):
         for key in list(state_dict):
@@ -93,8 +110,10 @@ def patch_weight_conversion() -> bool:
                 state_dict[key] = value.cpu()
         value = None
         free_paddle_gpu()
-        return original(self, state_dict, *args, **kwargs)
+        return original_set(self, state_dict, *args, **kwargs)
 
+    # from_pretrained() looks load_state_dict up as a module global at call time.
+    model_utils.load_state_dict = load_state_dict
     cls.set_hf_state_dict = set_hf_state_dict
     cls._ocrmod_cpu_conversion = True
     return True

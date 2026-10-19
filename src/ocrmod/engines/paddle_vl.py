@@ -37,6 +37,8 @@ class PaddleVLEngine:
             # Earlier Paddle models (orientation, PP-OCR) leave freed memory in Paddle's
             # reserve, which counts against the memory cap; hand it back before loading.
             free_paddle_gpu()
+            self.memory["before_load_mb"] = paddle_memory_mb()[0]
+            reset_paddle_peak()
             self._pipeline = PaddleOCRVL(**self.kwargs)
             # Loading leaves temporary copies of the weights on the GPU (paddlex reads the
             # file onto the GPU, then converts it); hand that memory back.

@@ -97,10 +97,10 @@ def step(name: str, skip: set[str]):
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip", nargs="*", default=[],
-                    help="nvidia paddle ollama orientation ppocr paddle_vl glm_ocr")
+                    help="nvidia paddle ollama orientation paddle_vl ppocr glm_ocr")
     ap.add_argument("--only", nargs="*", help="run only these steps")
     args = ap.parse_args()
-    steps = ["nvidia", "paddle", "ollama", "orientation", "ppocr", "paddle_vl", "glm_ocr"]
+    steps = ["nvidia", "paddle", "ollama", "orientation", "paddle_vl", "ppocr", "glm_ocr"]
     skip = set(args.skip) | ({s for s in steps if s not in args.only} if args.only else set())
     settings = Settings.load()
     apply_gpu_limits(settings)
@@ -210,7 +210,8 @@ def main() -> None:
         return f"{len(md)} chars"
 
     try:
-        for fn in (nvidia, paddle_gpu, ollama, orientation, ppocr, paddle_vl, glm_ocr):
+        # Same order as the pipeline: orientation (ingest), layout engine, then line engine.
+        for fn in (nvidia, paddle_gpu, ollama, orientation, paddle_vl, ppocr, glm_ocr):
             fn()
     except KeyboardInterrupt:
         pass

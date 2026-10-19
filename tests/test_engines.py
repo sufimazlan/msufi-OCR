@@ -28,7 +28,7 @@ def test_paddle_vl_wrapper_with_stand_in_module(monkeypatch, tmp_path):
     assert pages == [_Res.markdown["markdown_texts"]] * 2
     assert created == [{"foo": 1}]  # loaded once, kwargs passed through
     assert calls == [{"use_queues": False}] * 2
-    assert set(eng.memory) == {"load_peak_mb", "after_load_mb", "reading_peak_mb"}
+    assert set(eng.memory) == {"before_load_mb", "load_peak_mb", "after_load_mb", "reading_peak_mb"}
     eng.close()
     assert eng._pipeline is None
 

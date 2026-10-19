@@ -10,7 +10,9 @@ def make_layout_engine(name: str, settings: Settings):
         from .paddle_vl import PaddleVLEngine
 
         cfg = settings["paddle_vl"]
-        return PaddleVLEngine(predict_kwargs=cfg.get("predict_kwargs", {}), **cfg["kwargs"])
+        return PaddleVLEngine(predict_kwargs=cfg.get("predict_kwargs", {}),
+                              cpu_weight_conversion=cfg.get("cpu_weight_conversion", True),
+                              **cfg["kwargs"])
     if name == "glm_ocr":
         from .glm_ocr import GLMOCREngine
 

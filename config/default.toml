@@ -30,6 +30,9 @@ kwargs = {}
 # Passed to each predict() call. use_queues=false reads a page in one sequence instead of
 # background worker threads: same output, and errors/Ctrl+C show where it really is.
 predict_kwargs = { use_queues = false }
+# Convert the weights in RAM while loading instead of on the GPU (paddlex's own loader
+# briefly needs about 5.9GB of VRAM). Set false if loading ever breaks after an update.
+cpu_weight_conversion = true
 
 [ppocr]
 kwargs = { use_doc_orientation_classify = false, use_doc_unwarping = false, use_textline_orientation = false }

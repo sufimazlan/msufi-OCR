@@ -31,3 +31,46 @@ def test_paddle_vl_wrapper_with_stand_in_module(monkeypatch, tmp_path):
     assert set(eng.memory) == {"load_peak_mb", "after_load_mb", "reading_peak_mb"}
     eng.close()
     assert eng._pipeline is None
+
+
+def test_patch_weight_conversion_moves_state_dict_to_cpu(monkeypatch):
+    from ocrmod.engines import paddle_vl
+
+    class Place:
+        def __init__(self, cpu):
+            self.cpu = cpu
+
+        def is_cpu_place(self):
+            return self.cpu
+
+    class Tensor:
+        def __init__(self, name, cpu=False):
+            self.name, self.place = name, Place(cpu)
+
+        def cpu(self):
+            return Tensor(self.name, cpu=True)
+
+    seen = {}
+
+    class Model:
+        def set_hf_state_dict(self, state_dict):
+            seen.update({k: v.place.is_cpu_place() if isinstance(v, Tensor) else v
+                         for k, v in state_dict.items()})
+            return "loaded"
+
+    fake_paddle = types.SimpleNamespace(Tensor=Tensor)
+    modeling = types.SimpleNamespace(PaddleOCRVLForConditionalGeneration=Model)
+    monkeypatch.setitem(sys.modules, "paddle", fake_paddle)
+    for name in ("paddlex", "paddlex.inference", "paddlex.inference.models",
+                 "paddlex.inference.models.doc_vlm", "paddlex.inference.models.doc_vlm.modeling"):
+        monkeypatch.setitem(sys.modules, name, types.ModuleType(name))
+    pkg = types.ModuleType("paddlex.inference.models.doc_vlm.modeling.paddleocr_vl")
+    pkg._paddleocr_vl = modeling
+    monkeypatch.setitem(sys.modules, pkg.__name__, pkg)
+    monkeypatch.setattr(paddle_vl, "free_paddle_gpu", lambda: None)
+
+    assert paddle_vl.patch_weight_conversion() is True
+    assert paddle_vl.patch_weight_conversion() is True  # idempotent
+    out = Model().set_hf_state_dict({"a": Tensor("a"), "b": Tensor("b", cpu=True), "n": 3})
+    assert out == "loaded"
+    assert seen == {"a": True, "b": True, "n": 3}  # GPU tensor moved to CPU, rest untouched

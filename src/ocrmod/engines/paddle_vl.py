@@ -20,9 +20,11 @@ log = logging.getLogger(__name__)
 class PaddleVLEngine:
     name = "paddle_vl"
 
-    def __init__(self, predict_kwargs: dict | None = None, **kwargs):
+    def __init__(self, predict_kwargs: dict | None = None, cpu_weight_conversion: bool = True,
+                 **kwargs):
         self.kwargs = kwargs
         self.predict_kwargs = predict_kwargs or {}
+        self.cpu_weight_conversion = cpu_weight_conversion
         self._pipeline = None
         self.memory: dict[str, float | None] = {}
 
@@ -30,6 +32,11 @@ class PaddleVLEngine:
         if self._pipeline is None:
             from paddleocr import PaddleOCRVL  # type: ignore
 
+            if self.cpu_weight_conversion:
+                patch_weight_conversion()
+            # Earlier Paddle models (orientation, PP-OCR) leave freed memory in Paddle's
+            # reserve, which counts against the memory cap; hand it back before loading.
+            free_paddle_gpu()
             self._pipeline = PaddleOCRVL(**self.kwargs)
             # Loading leaves temporary copies of the weights on the GPU (paddlex reads the
             # file onto the GPU, then converts it); hand that memory back.
@@ -53,6 +60,42 @@ class PaddleVLEngine:
     def close(self) -> None:
         self._pipeline = None
         free_paddle_gpu()
+
+
+def patch_weight_conversion() -> bool:
+    """Convert PaddleOCR-VL's weights in CPU RAM instead of on the GPU.
+
+    paddlex reads the weights file onto the GPU, then set_hf_state_dict() glues pieces
+    together (paddle.concat) there, briefly holding several copies: a 5.9GB load peak for a
+    1.9GB model. Moving the state dict to the CPU first makes the concat run in RAM; the
+    original method already moves each converted tensor to the model's device itself
+    (`state_dict[key].to(v1.place)`). Returns False if the class is not where we expect.
+    """
+    try:
+        import paddle  # type: ignore
+        from paddlex.inference.models.doc_vlm.modeling.paddleocr_vl import (  # type: ignore
+            _paddleocr_vl as modeling,
+        )
+    except Exception as exc:
+        log.warning("CPU weight conversion not applied (%s)", exc)
+        return False
+    cls = modeling.PaddleOCRVLForConditionalGeneration
+    if getattr(cls, "_ocrmod_cpu_conversion", False):
+        return True
+    original = cls.set_hf_state_dict
+
+    def set_hf_state_dict(self, state_dict, *args, **kwargs):
+        for key in list(state_dict):
+            value = state_dict[key]
+            if isinstance(value, paddle.Tensor) and not value.place.is_cpu_place():
+                state_dict[key] = value.cpu()
+        value = None
+        free_paddle_gpu()
+        return original(self, state_dict, *args, **kwargs)
+
+    cls.set_hf_state_dict = set_hf_state_dict
+    cls._ocrmod_cpu_conversion = True
+    return True
 
 
 def _markdown_of(res) -> str:
